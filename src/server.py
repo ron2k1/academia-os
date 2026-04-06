@@ -661,6 +661,15 @@ async def _handle_user_message(
 # Initialize the dashboard store and mount the sub-app
 _dashboard_store = EventStore()
 set_dashboard_store(_dashboard_store)
+
+
+@app.get("/dashboard")
+async def dashboard_redirect() -> None:
+    """Redirect /dashboard to /dashboard/ (trailing slash required by mount)."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/dashboard/", status_code=301)
+
+
 app.mount("/dashboard", dashboard_app)
 
 
