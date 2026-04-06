@@ -9,6 +9,7 @@ import pytest
 
 from src.agents.spawner import ClaudeSpawner, SpawnResult
 from src.config.schemas import ClassConfig
+from src.observability import events as _events_module
 from src.observability.store import EventStore
 from src.tools.vault import VaultTool
 
@@ -46,12 +47,29 @@ def vault(tmp_dir: Path) -> VaultTool:
 def event_store() -> EventStore:
     """Create an in-memory EventStore for testing.
 
+    Sets the module-level default store so emit() works,
+    and resets it after the test to avoid closed-db errors.
+
     Returns:
         A fresh in-memory EventStore.
     """
     store = EventStore(db_path=":memory:")
+    _events_module.set_store(store)
     yield store
     store.close()
+    _events_module._default_store = None
+
+
+@pytest.fixture(autouse=True)
+def _reset_event_store() -> None:
+    """Reset the module-level event store after every test.
+
+    Prevents 'Cannot operate on a closed database' errors when
+    a test closes the store but the module-level singleton still
+    references it.
+    """
+    yield
+    _events_module._default_store = None
 
 
 @pytest.fixture()

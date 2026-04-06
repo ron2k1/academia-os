@@ -66,10 +66,10 @@ class TestRExecutorExecuteFile:
 
     @patch("src.tools.r_executor.subprocess.run")
     def test_runs_script(
-        self, mock_run: MagicMock, tmp_path: Path
+        self, mock_run: MagicMock, tmp_dir: Path
     ) -> None:
         """execute_file runs the script and returns RResult."""
-        script = tmp_path / "test.R"
+        script = tmp_dir / "test.R"
         script.write_text("cat('hello')")
         mock_run.return_value = MagicMock(
             stdout="hello", stderr="", returncode=0
@@ -82,10 +82,10 @@ class TestRExecutorExecuteFile:
 
     @patch("src.tools.r_executor.subprocess.run")
     def test_passes_args(
-        self, mock_run: MagicMock, tmp_path: Path
+        self, mock_run: MagicMock, tmp_dir: Path
     ) -> None:
         """execute_file passes extra arguments to the command."""
-        script = tmp_path / "test.R"
+        script = tmp_dir / "test.R"
         script.write_text("args <- commandArgs(TRUE)")
         mock_run.return_value = MagicMock(
             stdout="", stderr="", returncode=0
@@ -106,10 +106,10 @@ class TestRExecutorExecuteFile:
 
     @patch("src.tools.r_executor.subprocess.run")
     def test_nonzero_exit_code(
-        self, mock_run: MagicMock, tmp_path: Path
+        self, mock_run: MagicMock, tmp_dir: Path
     ) -> None:
         """execute_file captures non-zero exit codes."""
-        script = tmp_path / "fail.R"
+        script = tmp_dir / "fail.R"
         script.write_text("stop('error')")
         mock_run.return_value = MagicMock(
             stdout="", stderr="Error in stop", returncode=1
@@ -153,16 +153,16 @@ class TestRExecutorExecuteInline:
 
     @patch("src.tools.r_executor.subprocess.run")
     def test_passes_working_dir(
-        self, mock_run: MagicMock, tmp_path: Path
+        self, mock_run: MagicMock, tmp_dir: Path
     ) -> None:
         """execute_inline forwards working_dir to subprocess."""
         mock_run.return_value = MagicMock(
             stdout="", stderr="", returncode=0
         )
         executor = RExecutor()
-        executor.execute_inline("1", working_dir=str(tmp_path))
+        executor.execute_inline("1", working_dir=str(tmp_dir))
         call_kwargs = mock_run.call_args[1]
-        assert call_kwargs["cwd"] == str(tmp_path)
+        assert call_kwargs["cwd"] == str(tmp_dir)
 
 
 class TestRExecutorErrorHandling:
@@ -170,13 +170,13 @@ class TestRExecutorErrorHandling:
 
     @patch("src.tools.r_executor.subprocess.run")
     def test_timeout_returns_error(
-        self, mock_run: MagicMock, tmp_path: Path
+        self, mock_run: MagicMock, tmp_dir: Path
     ) -> None:
         """Timeout returns RResult with exit_code -1."""
         mock_run.side_effect = subprocess.TimeoutExpired(
             cmd="Rscript", timeout=10
         )
-        script = tmp_path / "slow.R"
+        script = tmp_dir / "slow.R"
         script.write_text("Sys.sleep(999)")
         executor = RExecutor(timeout=10)
         result = executor.execute_file(str(script))
@@ -186,11 +186,11 @@ class TestRExecutorErrorHandling:
 
     @patch("src.tools.r_executor.subprocess.run")
     def test_missing_binary_returns_error(
-        self, mock_run: MagicMock, tmp_path: Path
+        self, mock_run: MagicMock, tmp_dir: Path
     ) -> None:
         """Missing R binary returns RResult with exit_code -1."""
         mock_run.side_effect = FileNotFoundError()
-        script = tmp_path / "test.R"
+        script = tmp_dir / "test.R"
         script.write_text("cat(1)")
         executor = RExecutor(r_binary="/bad/Rscript")
         result = executor.execute_file(str(script))
