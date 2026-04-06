@@ -75,8 +75,7 @@ class GuardClaw:
         """Score *message* for prompt-injection risk.
 
         Returns:
-            * ``BLOCK`` if **two or more** patterns match.
-            * ``WARN``  if **exactly one** pattern matches.
+            * ``BLOCK`` if **one or more** injection patterns match.
             * ``ALLOW`` otherwise.
         """
         matches: list[str] = []
@@ -86,10 +85,8 @@ class GuardClaw:
 
         hit_count = len(matches)
 
-        if hit_count >= 2:
+        if hit_count >= 1:
             verdict = FilterVerdict.BLOCK
-        elif hit_count == 1:
-            verdict = FilterVerdict.WARN
         else:
             verdict = FilterVerdict.ALLOW
 

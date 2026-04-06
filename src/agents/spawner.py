@@ -3,12 +3,37 @@ from __future__ import annotations
 
 import logging
 import random
+import shutil
 import subprocess
+import sys
 import time
 
 from pydantic import BaseModel, Field
 
 from src.config.defaults import DEFAULT_AGENT_MODEL, DEFAULT_TIMEOUT_SECONDS
+
+
+def _resolve_claude_binary(binary: str) -> str:
+    """Resolve the claude CLI binary to its full path.
+
+    On Windows, ``claude`` is a ``.cmd`` wrapper that subprocess cannot
+    find without the extension. Uses shutil.which() to get the real path.
+
+    Args:
+        binary: The binary name or path to resolve.
+
+    Returns:
+        The resolved absolute path if found, otherwise the original value.
+    """
+    resolved = shutil.which(binary)
+    if resolved:
+        return resolved
+    # Fallback: try .cmd extension on Windows
+    if sys.platform == "win32":
+        resolved = shutil.which(binary + ".cmd")
+        if resolved:
+            return resolved
+    return binary
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +72,7 @@ class ClaudeSpawner:
             binary: Path or name of the claude CLI binary.
             timeout_seconds: Maximum wall-clock seconds per invocation.
         """
-        self.binary = binary
+        self.binary = _resolve_claude_binary(binary)
         self.timeout_seconds = timeout_seconds
 
     def spawn(
