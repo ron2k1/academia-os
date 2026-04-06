@@ -104,9 +104,12 @@ class TestClaudeSpawner:
         import subprocess
 
         mock_proc = self._mock_popen()
-        mock_proc.communicate.side_effect = subprocess.TimeoutExpired(
-            cmd="claude", timeout=5
-        )
+        # First call raises TimeoutExpired; second call (after kill)
+        # returns normally to drain buffers.
+        mock_proc.communicate.side_effect = [
+            subprocess.TimeoutExpired(cmd="claude", timeout=5),
+            ("", ""),
+        ]
         mock_popen_cls.return_value = mock_proc
 
         spawner = ClaudeSpawner(timeout_seconds=5)

@@ -59,8 +59,8 @@ class TestVaultList:
         vault.write("a.md", "a")
         vault.write("sub/b.md", "b")
         files = vault.list(".")
-        assert "test-class/a.md" in files
-        assert "test-class/sub/b.md" in files
+        assert "a.md" in files
+        assert "sub/b.md" in files
 
     def test_list_empty(self, vault: VaultTool) -> None:
         """List on empty directory returns empty list."""
