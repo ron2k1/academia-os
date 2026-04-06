@@ -13,6 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from src.observability.dashboard import dashboard_app, set_dashboard_store
+from src.observability.store import EventStore
 from src.websocket.handler import ConnectionManager
 from src.websocket.messages import (
     ErrorMessage,
@@ -380,6 +382,16 @@ async def _handle_user_message(
         )
     finally:
         session.is_streaming = False
+
+
+# ---------------------------------------------------------------------------
+# Observability Dashboard (must be mounted BEFORE static catch-all)
+# ---------------------------------------------------------------------------
+
+# Initialize the dashboard store and mount the sub-app
+_dashboard_store = EventStore()
+set_dashboard_store(_dashboard_store)
+app.mount("/dashboard", dashboard_app)
 
 
 # ---------------------------------------------------------------------------
