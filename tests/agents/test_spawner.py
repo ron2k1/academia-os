@@ -143,6 +143,147 @@ class TestClaudeSpawner:
         assert stdin_text == "just a message"
 
 
+class TestSpawnWithRetry:
+    """Tests for the spawn_with_retry method (exponential backoff)."""
+
+    def _mock_popen(
+        self,
+        stdout: str = "response",
+        stderr: str = "",
+        returncode: int = 0,
+        pid: int = 12345,
+    ) -> MagicMock:
+        """Create a mock Popen instance."""
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = (stdout, stderr)
+        mock_proc.returncode = returncode
+        mock_proc.pid = pid
+        return mock_proc
+
+    @patch("src.agents.spawner.time.sleep")
+    @patch("src.agents.spawner.subprocess.Popen")
+    def test_success_first_attempt(
+        self, mock_popen_cls: MagicMock, mock_sleep: MagicMock
+    ) -> None:
+        """Returns immediately when the first attempt succeeds."""
+        mock_popen_cls.return_value = self._mock_popen()
+        spawner = ClaudeSpawner()
+        result = spawner.spawn_with_retry("msg", max_retries=2)
+
+        assert result.exit_code == 0
+        assert result.stdout == "response"
+        mock_sleep.assert_not_called()
+
+    @patch("src.agents.spawner.time.sleep")
+    @patch("src.agents.spawner.subprocess.Popen")
+    def test_success_after_failure(
+        self, mock_popen_cls: MagicMock, mock_sleep: MagicMock
+    ) -> None:
+        """Retries and succeeds after transient failures."""
+        fail_proc = self._mock_popen(returncode=1, stderr="transient error")
+        ok_proc = self._mock_popen(stdout="recovered")
+
+        mock_popen_cls.side_effect = [fail_proc, fail_proc, ok_proc]
+        spawner = ClaudeSpawner()
+        result = spawner.spawn_with_retry(
+            "msg", max_retries=3, base_delay=0.01, jitter=0
+        )
+
+        assert result.exit_code == 0
+        assert result.stdout == "recovered"
+        assert mock_sleep.call_count == 2  # slept before attempt 2 and 3
+
+    @patch("src.agents.spawner.time.sleep")
+    @patch("src.agents.spawner.subprocess.Popen")
+    def test_all_attempts_fail_raises_runtime_error(
+        self, mock_popen_cls: MagicMock, mock_sleep: MagicMock
+    ) -> None:
+        """Raises RuntimeError when all attempts return non-zero exit code."""
+        mock_popen_cls.return_value = self._mock_popen(
+            returncode=1, stderr="persistent failure"
+        )
+        spawner = ClaudeSpawner()
+
+        with pytest.raises(RuntimeError, match="All 3 spawn attempts failed"):
+            spawner.spawn_with_retry(
+                "msg", max_retries=2, base_delay=0.01, jitter=0
+            )
+
+    @patch("src.agents.spawner.time.sleep")
+    @patch("src.agents.spawner.subprocess.Popen")
+    def test_all_attempts_timeout_raises_timeout_error(
+        self, mock_popen_cls: MagicMock, mock_sleep: MagicMock
+    ) -> None:
+        """Raises TimeoutError when all attempts time out."""
+        import subprocess as _sp
+
+        mock_proc = self._mock_popen()
+        mock_proc.communicate.side_effect = [
+            _sp.TimeoutExpired(cmd="claude", timeout=5),
+            ("", ""),  # kill drain
+            _sp.TimeoutExpired(cmd="claude", timeout=5),
+            ("", ""),
+        ]
+        mock_popen_cls.return_value = mock_proc
+
+        spawner = ClaudeSpawner(timeout_seconds=5)
+        with pytest.raises(TimeoutError, match="All 2 spawn attempts timed out"):
+            spawner.spawn_with_retry(
+                "msg", max_retries=1, base_delay=0.01, jitter=0
+            )
+
+    @patch("src.agents.spawner.time.sleep")
+    @patch("src.agents.spawner.subprocess.Popen")
+    def test_exponential_delay(
+        self, mock_popen_cls: MagicMock, mock_sleep: MagicMock
+    ) -> None:
+        """Sleep delays increase exponentially between attempts."""
+        mock_popen_cls.return_value = self._mock_popen(
+            returncode=1, stderr="fail"
+        )
+        spawner = ClaudeSpawner()
+
+        with pytest.raises(RuntimeError):
+            spawner.spawn_with_retry(
+                "msg",
+                max_retries=3,
+                base_delay=1.0,
+                max_delay=100.0,
+                jitter=0,
+            )
+
+        # delays: 1*2^0=1, 1*2^1=2, 1*2^2=4
+        delays = [call.args[0] for call in mock_sleep.call_args_list]
+        assert len(delays) == 3
+        assert delays[0] == pytest.approx(1.0)
+        assert delays[1] == pytest.approx(2.0)
+        assert delays[2] == pytest.approx(4.0)
+
+    @patch("src.agents.spawner.time.sleep")
+    @patch("src.agents.spawner.subprocess.Popen")
+    def test_delay_capped_at_max(
+        self, mock_popen_cls: MagicMock, mock_sleep: MagicMock
+    ) -> None:
+        """Delay never exceeds max_delay."""
+        mock_popen_cls.return_value = self._mock_popen(
+            returncode=1, stderr="fail"
+        )
+        spawner = ClaudeSpawner()
+
+        with pytest.raises(RuntimeError):
+            spawner.spawn_with_retry(
+                "msg",
+                max_retries=5,
+                base_delay=10.0,
+                max_delay=15.0,
+                jitter=0,
+            )
+
+        delays = [call.args[0] for call in mock_sleep.call_args_list]
+        for d in delays:
+            assert d <= 15.0
+
+
 class TestSpawnClaude:
     """Tests for the spawn_claude convenience wrapper."""
 

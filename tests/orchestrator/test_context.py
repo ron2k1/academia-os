@@ -2,7 +2,12 @@
 from __future__ import annotations
 
 from src.config.schemas import ClassConfig
-from src.orchestrator.context import ContextPayload, assemble_context
+from src.orchestrator.context import (
+    DEFAULT_MAX_BYTES,
+    ContextPayload,
+    _apply_byte_budget,
+    assemble_context,
+)
 from src.tools.vault import VaultTool
 
 
@@ -110,3 +115,69 @@ class TestAssembleContext:
         payload = assemble_context(sample_class_config, vault)
         assert "Only topics" in payload.vault_context
         assert "_index.md" not in payload.vault_context
+
+
+class TestByteBudget:
+    """Tests for byte-budget truncation in assemble_context."""
+
+    def test_within_budget_no_truncation(
+        self,
+        sample_class_config: ClassConfig,
+        vault: VaultTool,
+    ) -> None:
+        """Small vault content is not truncated."""
+        vault.write("_index.md", "Small index")
+        vault.write("context.md", "Small context")
+        payload = assemble_context(sample_class_config, vault)
+        assert "[...context truncated" not in payload.vault_context
+
+    def test_exceeds_budget_truncated(
+        self,
+        sample_class_config: ClassConfig,
+        vault: VaultTool,
+    ) -> None:
+        """Large vault content is truncated with marker."""
+        big_content = "Line {i}: " + "x" * 80 + "\n"
+        vault.write("context.md", "".join(
+            f"Line {i}: " + "x" * 80 + "\n" for i in range(1000)
+        ))
+        payload = assemble_context(
+            sample_class_config, vault, max_bytes=2000
+        )
+        assert "[...context truncated to fit budget...]" in payload.vault_context
+        total_bytes = len(payload.to_string().encode("utf-8"))
+        # Should be within budget (may be slightly under due to truncation)
+        assert total_bytes <= 2000 + 100  # small tolerance for separators
+
+    def test_max_bytes_zero_disables_budget(
+        self,
+        sample_class_config: ClassConfig,
+        vault: VaultTool,
+    ) -> None:
+        """max_bytes=0 disables the byte budget entirely."""
+        vault.write("context.md", "x" * 100_000)
+        payload = assemble_context(
+            sample_class_config, vault, max_bytes=0
+        )
+        assert "[...context truncated" not in payload.vault_context
+        assert len(payload.vault_context) > 100_000
+
+    def test_default_max_bytes_is_50k(self) -> None:
+        """The default budget constant is 50,000 bytes."""
+        assert DEFAULT_MAX_BYTES == 50_000
+
+    def test_apply_byte_budget_preserves_newest(self) -> None:
+        """Truncation removes from the beginning (oldest content)."""
+        old_content = "### _index.md\n" + ("OLD LINE HERE\n" * 20) + "\n"
+        new_content = "### context.md\nNEW LINE HERE\n"
+        vault_text = old_content + new_content
+        result = _apply_byte_budget(
+            class_info="## Class: Test (T)",
+            vault_context=vault_text,
+            extra={},
+            max_bytes=120,
+        )
+        # Newest content should be retained
+        assert "NEW LINE HERE" in result
+        # Marker should be present
+        assert "[...context truncated" in result
