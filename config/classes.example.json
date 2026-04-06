@@ -1,0 +1,45 @@
+{
+  "semester": {
+    "name": "Spring 2026",
+    "start": "2026-01-20",
+    "end": "2026-05-15",
+    "archived": false
+  },
+  "classes": [
+    {
+      "id": "regression-methods",
+      "name": "Regression Methods",
+      "code": "960:401",
+      "tools": ["r-studio", "pdf"],
+      "active": true
+    },
+    {
+      "id": "intro-data-science",
+      "name": "Intro to Data Science",
+      "code": "198:142",
+      "tools": ["python", "pdf"],
+      "active": true
+    },
+    {
+      "id": "linear-algebra",
+      "name": "Linear Algebra",
+      "code": "640:250",
+      "tools": ["latex", "pdf"],
+      "active": true
+    },
+    {
+      "id": "probability-theory",
+      "name": "Probability Theory",
+      "code": "960:381",
+      "tools": ["latex", "pdf"],
+      "active": true
+    },
+    {
+      "id": "financial-economics",
+      "name": "Financial Economics",
+      "code": "220:395",
+      "tools": ["pdf", "docx"],
+      "active": false
+    }
+  ]
+}

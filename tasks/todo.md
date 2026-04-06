@@ -1,17 +1,17 @@
 # AcademiaOS -- Build Tracker
 
-## Current Phase: 1 -- Foundation
-## Current Task: Directory structure and config files
+## Current Phase: 2 -- Agents
+## Current Task: Pending
 
-### Phase 1 -- Foundation
-- [ ] Directory structure and config files
-- [ ] Config schemas (Pydantic) and loader
-- [ ] Vault tool (read/write/list/search)
-- [ ] Claude CLI spawner
-- [ ] Observability event emitter + SQLite store
-- [ ] Init semester script
-- [ ] Unit tests for all above
-- [ ] Example configs
+### Phase 1 -- Foundation (COMPLETE)
+- [x] Directory structure and config files
+- [x] Config schemas (Pydantic) and loader
+- [x] Vault tool (read/write/list/search)
+- [x] Claude CLI spawner
+- [x] Observability event emitter + SQLite store
+- [x] Init semester script
+- [x] Unit tests for all above
+- [x] Example configs
 
 ### Phase 2 -- Agents
 [pending]
