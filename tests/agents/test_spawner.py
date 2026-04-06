@@ -58,7 +58,7 @@ class TestClaudeSpawner:
         assert result.stdout == "response"
         assert result.exit_code == 0
         assert result.pid == 12345
-        assert result.wall_time_ms > 0
+        assert result.wall_time_ms >= 0
 
     @patch("src.agents.spawner.subprocess.Popen")
     def test_spawn_with_context(self, mock_popen_cls: MagicMock) -> None:

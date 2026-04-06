@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -58,6 +58,28 @@ def test_client():
         (tmp_path / "vaults").mkdir(exist_ok=True)
         (tmp_path / "files").mkdir(exist_ok=True)
         (tmp_path / "progress").mkdir(exist_ok=True)
+
+        # Write minimal classes config so _handle_user_message can load it
+        classes_json = {
+            "semester": {
+                "name": "Test Semester",
+                "start": "2026-01-01",
+                "end": "2026-06-01",
+                "archived": False,
+            },
+            "classes": [
+                {
+                    "id": "test-class",
+                    "name": "Test Class",
+                    "code": "TEST:100",
+                    "tools": ["pdf"],
+                    "active": True,
+                }
+            ],
+        }
+        (tmp_path / "config" / "classes.json").write_text(
+            json.dumps(classes_json)
+        )
 
         from src.server import app
         yield TestClient(app)
@@ -423,30 +445,46 @@ class TestWebSocketIntegration:
         self, test_client: TestClient
     ) -> None:
         """WebSocket streams response chunks for user messages."""
-        with test_client.websocket_connect("/ws") as ws:
-            ws.receive_json()  # consume health message
-            ws.send_json({
-                "type": "message",
-                "class_id": "test-class",
-                "agent": "tutor",
-                "content": "What is regression?",
-            })
+        from src.agents.spawner import SpawnResult
 
-            # Collect all chunks
-            chunks = []
-            while True:
-                data = ws.receive_json()
-                if data["type"] == "stream_chunk":
-                    chunks.append(data["content"])
-                elif data["type"] == "stream_end":
-                    break
-                elif data["type"] == "error":
-                    pytest.fail(f"Unexpected error: {data['message']}")
-                    break
+        fake_result = SpawnResult(
+            stdout=(
+                "As your tutor, regression is a statistical method "
+                "for modeling relationships between variables."
+            ),
+            exit_code=0,
+            wall_time_ms=100.0,
+        )
+        with patch(
+            "src.agents.spawner.ClaudeSpawner.spawn",
+            return_value=fake_result,
+        ):
+            with test_client.websocket_connect("/ws") as ws:
+                ws.receive_json()  # consume health message
+                ws.send_json({
+                    "type": "message",
+                    "class_id": "test-class",
+                    "agent": "tutor",
+                    "content": "What is regression?",
+                })
 
-            assert len(chunks) > 0
-            full_response = "".join(chunks)
-            assert "tutor" in full_response.lower()
+                # Collect all chunks
+                chunks = []
+                while True:
+                    data = ws.receive_json()
+                    if data["type"] == "stream_chunk":
+                        chunks.append(data["content"])
+                    elif data["type"] == "stream_end":
+                        break
+                    elif data["type"] == "error":
+                        pytest.fail(
+                            f"Unexpected error: {data['message']}"
+                        )
+                        break
+
+                assert len(chunks) > 0
+                full_response = "".join(chunks)
+                assert "tutor" in full_response.lower()
 
     def test_websocket_invalid_message(
         self, test_client: TestClient

@@ -1,6 +1,8 @@
 """Tests for observability event emitter and SQLite store."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 
 from src.observability.events import (
@@ -102,10 +104,12 @@ class TestEventStore:
         e1 = Event(
             event_type=EventType.AGENT_SPAWN,
             data={"order": 1},
+            timestamp=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
         )
         e2 = Event(
             event_type=EventType.AGENT_COMPLETE,
             data={"order": 2},
+            timestamp=datetime(2026, 1, 1, 0, 0, 1, tzinfo=timezone.utc),
         )
         event_store.insert(e1)
         event_store.insert(e2)
