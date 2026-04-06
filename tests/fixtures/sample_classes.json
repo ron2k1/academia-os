@@ -1,0 +1,31 @@
+{
+  "semester": {
+    "name": "Spring 2026",
+    "start": "2026-01-20",
+    "end": "2026-05-15",
+    "archived": false
+  },
+  "classes": [
+    {
+      "id": "regression-methods",
+      "name": "Regression Methods",
+      "code": "REGM",
+      "tools": ["r-studio", "docx", "pdf"],
+      "active": true
+    },
+    {
+      "id": "intro-macro",
+      "name": "Intro to Macroeconomics",
+      "code": "MACR",
+      "tools": ["docx", "pdf"],
+      "active": true
+    },
+    {
+      "id": "archived-class",
+      "name": "Archived Class",
+      "code": "ARC",
+      "tools": [],
+      "active": false
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+# OpenClaw (GuardClaw) configuration
+# Controls content filtering and safety guardrails.
+
+enabled: true
+
+filters:
+  # Block requests that attempt prompt injection
+  prompt_injection: true
+
+  # Block requests for full homework solutions
+  full_solution_block: true
+
+  # Allow step-by-step guidance
+  guided_help: true
+
+thresholds:
+  # Maximum tokens per agent response
+  max_response_tokens: 4096
+
+  # Maximum concurrent agent spawns
+  max_concurrent_agents: 3
+
+  # Rate limit: requests per minute per user
+  rate_limit_rpm: 30
+
+logging:
+  # Log filtered requests for review
+  log_filtered: true
+
+  # Event type for observability
+  event_type: "guardclaw.filter"

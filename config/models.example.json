@@ -1,0 +1,25 @@
+{
+  "orchestrator": {
+    "provider": "openrouter",
+    "model": "google/gemini-2.5-pro",
+    "notes": "Routes user messages to the correct agent."
+  },
+  "agents": {
+    "tutor": {
+      "cli_model": "claude-sonnet-4-20250514",
+      "notes": "Explains concepts, walks through examples."
+    },
+    "homework-helper": {
+      "cli_model": "claude-sonnet-4-20250514",
+      "notes": "Helps structure homework solutions without giving answers."
+    },
+    "note-taker": {
+      "cli_model": "claude-sonnet-4-20250514",
+      "notes": "Summarizes lecture content into vault notes."
+    },
+    "study-guide": {
+      "cli_model": "claude-sonnet-4-20250514",
+      "notes": "Creates study guides and practice problems."
+    }
+  }
+}
