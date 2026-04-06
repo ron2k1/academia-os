@@ -253,9 +253,11 @@ async def api_health() -> dict[str, Any]:
         (CONFIG_DIR / "classes.json").exists()
         or (CONFIG_DIR / "classes.example.json").exists()
     )
+    from src.orchestrator.openclaw_client import is_openclaw_available
     return {
         "gateway": True,
         "claude_cli": _check_claude_cli(),
+        "openclaw": is_openclaw_available(),
         "openrouter": True,
         "r": shutil.which("Rscript") is not None,
         "config_loaded": config_ok,
@@ -524,17 +526,27 @@ async def _handle_user_message(
                 msg.agent,
             )
 
-        # -- 4. Route intent ----------------------------------------------
-        routed_type: AgentType = route_intent(msg.content)
-        agent_type = routed_type.value
+        # -- 4. Route intent via OpenClaw (lead orchestrator) ---------------
+        from src.orchestrator.openclaw_client import route_via_openclaw, is_openclaw_available
+        openclaw_live = is_openclaw_available()
+        if openclaw_live and not (msg.agent and msg.agent in _AGENT_CLASSES):
+            # Use OpenClaw's LLM (OpenRouter via gateway) for routing decision
+            agent_type = route_via_openclaw(msg.content, class_id=msg.class_id)
+            routing_source = "openclaw"
+        else:
+            # Fall back to keyword routing (or honour explicit agent request)
+            routed_type: AgentType = route_intent(msg.content)
+            agent_type = routed_type.value
+            routing_source = "keyword"
 
-        # If the client explicitly requested a valid agent, honour it
+        # If the client explicitly requested a valid agent, always honour it
         if msg.agent and msg.agent in _AGENT_CLASSES:
             agent_type = msg.agent
+            routing_source = "client"
 
         emit(
             EventType.ORCHESTRATOR_ROUTE,
-            {"routed": routed_type.value, "effective": agent_type},
+            {"effective": agent_type, "source": routing_source, "openclaw_live": openclaw_live},
             class_id=msg.class_id,
             agent=agent_type,
         )
