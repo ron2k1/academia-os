@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
+from src.agents.spawner import ClaudeSpawner, SpawnResult
+from src.config.schemas import ClassConfig
 from src.observability.store import EventStore
 from src.tools.vault import VaultTool
 
@@ -69,3 +72,38 @@ def sample_models_path() -> Path:
         Path to sample_models.json.
     """
     return SAMPLE_MODELS_PATH
+
+
+@pytest.fixture()
+def sample_class_config() -> ClassConfig:
+    """Create a sample ClassConfig for testing agents.
+
+    Returns:
+        A ClassConfig with test values.
+    """
+    return ClassConfig(
+        id="test-class",
+        name="Test Class",
+        code="TEST",
+    )
+
+
+@pytest.fixture()
+def mock_spawner() -> MagicMock:
+    """Create a mock ClaudeSpawner that returns canned responses.
+
+    The mock's spawn method returns a SpawnResult with configurable
+    stdout. Default stdout is 'Mock response'.
+
+    Returns:
+        A MagicMock spec'd to ClaudeSpawner.
+    """
+    spawner = MagicMock(spec=ClaudeSpawner)
+    spawner.spawn.return_value = SpawnResult(
+        stdout="Mock response",
+        stderr="",
+        exit_code=0,
+        wall_time_ms=100.0,
+        pid=12345,
+    )
+    return spawner
