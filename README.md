@@ -1,5 +1,7 @@
 # AcademiaOS
 
+[![GitTok — vertical demo videos of finished GitHub projects](https://dev.gittok.net/og/readme-card.svg)](https://dev.gittok.net/feed)
+
 Docker-packaged multi-agent academic workspace. A FastAPI backend + React frontend
 where a lead orchestrator routes user intent to specialized sub-agents, each running
 as a fresh Claude CLI subprocess with context injected from Obsidian-style vaults.
